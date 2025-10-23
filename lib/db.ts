@@ -23,21 +23,18 @@ const dbConfig: DbConfig = {
   queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '0'),
 }
 
-// Debug: Log connection configuration (hide password)
-console.log('🔧 Database Configuration:', {
-  host: dbConfig.host,
-  port: dbConfig.port,
-  user: dbConfig.user,
-  database: dbConfig.database,
-  password: dbConfig.password ? `${dbConfig.password.substring(0, 3)}...${dbConfig.password.substring(dbConfig.password.length - 3)}` : 'EMPTY',
-  hasPassword: !!dbConfig.password,
-  connectionLimit: dbConfig.connectionLimit,
-})
-console.log('🔍 Raw ENV values:', {
-  DB_HOST: process.env.DB_HOST,
-  DB_USER: process.env.DB_USER,
-  DB_PASSWORD: process.env.DB_PASSWORD ? 'SET' : 'NOT SET',
-})
+// Debug: Log connection configuration (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  console.log('🔧 Database Configuration:', {
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    database: dbConfig.database,
+    password: dbConfig.password ? `${dbConfig.password.substring(0, 3)}...${dbConfig.password.substring(dbConfig.password.length - 3)}` : 'EMPTY',
+    hasPassword: !!dbConfig.password,
+    connectionLimit: dbConfig.connectionLimit,
+  })
+}
 
 // Create connection pool
 let pool: mysql.Pool | null = null
