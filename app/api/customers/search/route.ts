@@ -5,7 +5,8 @@ import { successResponse, unauthorizedResponse, serverErrorResponse } from '@/li
 
 interface CustomerSearchRecord {
   customer_id: number
-  upload_date: string
+  db_id: number
+  db_date: string
   event_name: string | null
   customer_name: string
   customer_phone: string
@@ -43,7 +44,8 @@ export async function GET(request: NextRequest) {
     let searchQuery = `
       SELECT
         c.customer_id,
-        dl.upload_date,
+        c.db_id,
+        d.db_date,
         c.event_name,
         c.customer_name,
         c.customer_phone,
@@ -51,12 +53,13 @@ export async function GET(request: NextRequest) {
         c.call_datetime,
         c.call_duration,
         c.memo,
-        c.has_audio
+        CASE WHEN cl.has_audio IS NOT NULL THEN cl.has_audio ELSE FALSE END as has_audio
       FROM customers c
-      JOIN db_lists dl ON c.db_id = dl.db_id
-      WHERE 1=1`
+      JOIN db_lists d ON c.db_id = d.db_id
+      LEFT JOIN call_logs cl ON c.customer_id = cl.customer_id
+      WHERE d.company_id = ?`
 
-    const queryParams: any[] = []
+    const queryParams: any[] = [user.companyId]
 
     if (name) {
       searchQuery += ` AND c.customer_name LIKE ?`
@@ -91,10 +94,10 @@ export async function GET(request: NextRequest) {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM customers c
-      JOIN db_lists dl ON c.db_id = dl.db_id
-      WHERE 1=1`
+      JOIN db_lists d ON c.db_id = d.db_id
+      WHERE d.company_id = ?`
 
-    const countParams: any[] = []
+    const countParams: any[] = [user.companyId]
 
     if (name) {
       countQuery += ` AND c.customer_name LIKE ?`
@@ -122,14 +125,14 @@ export async function GET(request: NextRequest) {
     // Format response
     const formattedCustomers = (customers || []).map((customer) => ({
       customerId: customer.customer_id,
-      date: customer.upload_date,
+      dbId: customer.db_id,
+      date: customer.db_date,
       eventName: customer.event_name || '',
       name: customer.customer_name,
       phone: customer.customer_phone,
       callStatus: customer.call_result || '',
       callDateTime: customer.call_datetime || '',
       callDuration: customer.call_duration || '',
-      customerType: '', // 고객유형은 삭제됨
       memo: customer.memo || '',
       hasAudio: customer.has_audio,
     }))

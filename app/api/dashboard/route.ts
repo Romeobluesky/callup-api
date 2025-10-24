@@ -52,10 +52,10 @@ export async function GET(request: NextRequest) {
         user_phone,
         user_status_message,
         is_active,
-        updated_at
+        last_login_at as updated_at
       FROM users
-      WHERE user_id = ?`,
-      [user.userId]
+      WHERE user_id = ? AND company_id = ?`,
+      [user.userId, user.companyId]
     )
 
     if (!userInfoResult || userInfoResult.length === 0) {
@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
         COALESCE(total_call_count, 0) as call_count,
         COALESCE(total_call_time, '00:00:00') as call_duration
       FROM statistics
-      WHERE user_id = ? AND stat_date = CURDATE()`,
-      [user.userId]
+      WHERE company_id = ? AND user_id = ? AND stat_date = CURDATE()`,
+      [user.companyId, user.userId]
     )
 
     const todayStats = todayStatsResult?.[0] || {
@@ -82,21 +82,12 @@ export async function GET(request: NextRequest) {
     // 3. Get today's call results aggregation
     const callResultsResult = await query<CallResults[]>(
       `SELECT
-        SUM(CASE
-          WHEN call_result LIKE '%연결성공%' OR call_result LIKE '%통화성공%'
-          THEN 1 ELSE 0
-        END) AS connected,
-        SUM(CASE
-          WHEN call_result LIKE '%연결실패%' OR call_result LIKE '%부재중%' OR call_result LIKE '%무응답%'
-          THEN 1 ELSE 0
-        END) AS failed,
-        SUM(CASE
-          WHEN call_result LIKE '%재연락%' OR call_result LIKE '%재통화%'
-          THEN 1 ELSE 0
-        END) AS callback
-      FROM call_logs
-      WHERE user_id = ? AND DATE(call_datetime) = CURDATE()`,
-      [user.userId]
+        COALESCE(success_count, 0) AS connected,
+        COALESCE(failed_count, 0) AS failed,
+        COALESCE(callback_count, 0) AS callback
+      FROM statistics
+      WHERE company_id = ? AND user_id = ? AND stat_date = CURDATE()`,
+      [user.companyId, user.userId]
     )
 
     const callResults = callResultsResult?.[0] || {
@@ -109,15 +100,15 @@ export async function GET(request: NextRequest) {
     const dbListsResult = await query<DbList[]>(
       `SELECT
         db_id,
-        upload_date,
-        file_name,
+        db_date as upload_date,
+        db_title as file_name,
         total_count,
         unused_count
       FROM db_lists
-      WHERE is_active = TRUE
-      ORDER BY upload_date DESC
+      WHERE company_id = ? AND is_active = TRUE
+      ORDER BY db_date DESC
       LIMIT 3`,
-      []
+      [user.companyId]
     )
 
     const dbLists =

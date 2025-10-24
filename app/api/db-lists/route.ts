@@ -5,10 +5,12 @@ import { successResponse, unauthorizedResponse, serverErrorResponse } from '@/li
 
 interface DbListRecord {
   db_id: number
-  upload_date: string
-  file_name: string
+  company_id: number
+  db_date: string
+  db_title: string
   total_count: number
   unused_count: number
+  is_active: boolean
 }
 
 export async function GET(request: NextRequest) {
@@ -31,40 +33,45 @@ export async function GET(request: NextRequest) {
       dbLists = await query<DbListRecord[]>(
         `SELECT
           db_id,
-          upload_date,
-          file_name,
+          company_id,
+          db_date,
+          db_title,
           total_count,
-          unused_count
+          unused_count,
+          is_active
         FROM db_lists
-        WHERE is_active = TRUE
-          AND (file_name LIKE ? OR db_title LIKE ?)
-        ORDER BY upload_date DESC`,
-        [`%${search}%`, `%${search}%`]
+        WHERE company_id = ?
+          AND db_title LIKE ?
+        ORDER BY db_date DESC`,
+        [user.companyId, `%${search}%`]
       )
     } else {
-      // Get all active DB lists
+      // Get all DB lists for company
       dbLists = await query<DbListRecord[]>(
         `SELECT
           db_id,
-          upload_date,
-          file_name,
+          company_id,
+          db_date,
+          db_title,
           total_count,
-          unused_count
+          unused_count,
+          is_active
         FROM db_lists
-        WHERE is_active = TRUE
-        ORDER BY upload_date DESC`,
-        []
+        WHERE company_id = ?
+        ORDER BY db_date DESC`,
+        [user.companyId]
       )
     }
 
     // Format response
     const formattedLists = (dbLists || []).map((db) => ({
       dbId: db.db_id,
-      date: db.upload_date,
-      title: db.file_name,
-      fileName: db.file_name,
-      totalCount: db.total_count,
-      unusedCount: db.unused_count,
+      companyId: db.company_id,
+      date: db.db_date,
+      title: db.db_title,
+      total: db.total_count,
+      unused: db.unused_count,
+      isActive: db.is_active,
     }))
 
     return successResponse(formattedLists)

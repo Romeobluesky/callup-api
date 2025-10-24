@@ -9,21 +9,17 @@ import {
 } from '@/lib/response'
 
 interface StatsRecord {
-  call_count: number
-  call_duration: string
-}
-
-interface CallResultStats {
-  connected: number
-  failed: number
-  promising: number
-  callback: number
-  no_answer: number
+  total_call_time: string
+  total_call_count: number
+  success_count: number
+  failed_count: number
+  callback_count: number
+  no_answer_count: number
 }
 
 interface DbStats {
-  total_db: number
-  unused_db: number
+  assigned_db_count: number
+  unused_db_count: number
 }
 
 export async function GET(request: NextRequest) {
@@ -49,92 +45,76 @@ export async function GET(request: NextRequest) {
 
     // Build date condition based on period
     let dateCondition = ''
-    let callLogDateCondition = ''
 
     switch (period) {
       case 'today':
-        dateCondition = 'stat_date = CURDATE()'
-        callLogDateCondition = 'DATE(call_datetime) = CURDATE()'
+        dateCondition = 'AND stat_date = CURDATE()'
         break
       case 'week':
-        dateCondition = `stat_date >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
-                        AND stat_date <= CURDATE()`
-        callLogDateCondition = `call_datetime >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)`
+        dateCondition = 'AND stat_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)'
         break
       case 'month':
-        dateCondition = `YEAR(stat_date) = YEAR(CURDATE())
-                        AND MONTH(stat_date) = MONTH(CURDATE())`
-        callLogDateCondition = `YEAR(call_datetime) = YEAR(CURDATE())
-                               AND MONTH(call_datetime) = MONTH(CURDATE())`
+        dateCondition = 'AND stat_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)'
         break
       case 'all':
-        dateCondition = '1=1'
-        callLogDateCondition = '1=1'
+        dateCondition = ''
         break
     }
 
-    // 1. Get call count and duration from statistics
+    // Get statistics from database
     const statsResult = await query<StatsRecord[]>(
       `SELECT
-        COALESCE(SUM(total_call_count), 0) AS call_count,
-        COALESCE(SEC_TO_TIME(SUM(TIME_TO_SEC(total_call_time))), '00:00:00') AS call_duration
+        COALESCE(SEC_TO_TIME(SUM(TIME_TO_SEC(total_call_time))), '00:00:00') AS total_call_time,
+        COALESCE(SUM(total_call_count), 0) AS total_call_count,
+        COALESCE(SUM(success_count), 0) AS success_count,
+        COALESCE(SUM(failed_count), 0) AS failed_count,
+        COALESCE(SUM(callback_count), 0) AS callback_count,
+        COALESCE(SUM(no_answer_count), 0) AS no_answer_count
       FROM statistics
-      WHERE user_id = ? AND ${dateCondition}`,
-      [user.userId]
+      WHERE company_id = ? AND user_id = ? ${dateCondition}`,
+      [user.companyId, user.userId]
     )
 
     const stats = statsResult?.[0] || {
-      call_count: 0,
-      call_duration: '00:00:00',
+      total_call_time: '00:00:00',
+      total_call_count: 0,
+      success_count: 0,
+      failed_count: 0,
+      callback_count: 0,
+      no_answer_count: 0,
     }
 
-    // 2. Get call results aggregation from call_logs
-    const callResultsResult = await query<CallResultStats[]>(
-      `SELECT
-        SUM(CASE WHEN call_result LIKE '%통화성공%' OR call_result LIKE '%연결성공%' THEN 1 ELSE 0 END) AS connected,
-        SUM(CASE WHEN call_result LIKE '%연결실패%' OR call_result LIKE '%부재중%' THEN 1 ELSE 0 END) AS failed,
-        SUM(CASE WHEN consultation_result LIKE '%가망고객%' THEN 1 ELSE 0 END) AS promising,
-        SUM(CASE WHEN call_result LIKE '%재연락%' OR call_result LIKE '%재통화%' THEN 1 ELSE 0 END) AS callback,
-        SUM(CASE WHEN call_result LIKE '%무응답%' THEN 1 ELSE 0 END) AS no_answer
-      FROM call_logs
-      WHERE user_id = ? AND ${callLogDateCondition}`,
-      [user.userId]
-    )
-
-    const callResults = callResultsResult?.[0] || {
-      connected: 0,
-      failed: 0,
-      promising: 0,
-      callback: 0,
-      no_answer: 0,
-    }
-
-    // 3. Get DB statistics (total and unused)
+    // Get DB statistics (assigned DB count)
     const dbStatsResult = await query<DbStats[]>(
       `SELECT
-        COALESCE(SUM(total_count), 0) AS total_db,
-        COALESCE(SUM(unused_count), 0) AS unused_db
+        COALESCE(COUNT(DISTINCT db_id), 0) AS assigned_db_count,
+        COALESCE(SUM(unused_count), 0) AS unused_db_count
       FROM db_lists
-      WHERE is_active = TRUE`,
-      []
+      WHERE company_id = ? AND is_active = TRUE`,
+      [user.companyId]
     )
 
     const dbStats = dbStatsResult?.[0] || {
-      total_db: 0,
-      unused_db: 0,
+      assigned_db_count: 0,
+      unused_db_count: 0,
     }
 
     return successResponse({
+      user: {
+        userName: user.userName,
+        userId: user.userId,
+      },
       period,
-      callDuration: stats.call_duration,
-      callCount: Number(stats.call_count) || 0,
-      connected: Number(callResults.connected) || 0,
-      failed: Number(callResults.failed) || 0,
-      promising: Number(callResults.promising) || 0,
-      callback: Number(callResults.callback) || 0,
-      noAnswer: Number(callResults.no_answer) || 0,
-      totalDb: Number(dbStats.total_db) || 0,
-      unusedDb: Number(dbStats.unused_db) || 0,
+      stats: {
+        totalCallTime: stats.total_call_time,
+        totalCallCount: Number(stats.total_call_count) || 0,
+        successCount: Number(stats.success_count) || 0,
+        failedCount: Number(stats.failed_count) || 0,
+        callbackCount: Number(stats.callback_count) || 0,
+        noAnswerCount: Number(stats.no_answer_count) || 0,
+        assignedDbCount: Number(dbStats.assigned_db_count) || 0,
+        unusedDbCount: Number(dbStats.unused_db_count) || 0,
+      },
     })
   } catch (error: any) {
     console.error('Statistics error:', error)

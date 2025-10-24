@@ -12,6 +12,7 @@ import {
 interface CustomerDetailRecord {
   customer_id: number
   db_id: number
+  assigned_user_id: number | null
   event_name: string | null
   customer_phone: string
   customer_name: string
@@ -51,32 +52,34 @@ export async function GET(
       return errorResponse('유효하지 않은 고객 ID입니다.', 'INVALID_CUSTOMER_ID', 400)
     }
 
-    // Get customer detail
+    // Get customer detail with company_id check
     const customers = await query<CustomerDetailRecord[]>(
       `SELECT
-        customer_id,
-        db_id,
-        event_name,
-        customer_phone,
-        customer_name,
-        customer_info1,
-        customer_info2,
-        customer_info3,
-        data_status,
-        call_result,
-        consultation_result,
-        memo,
-        call_datetime,
-        call_start_time,
-        call_end_time,
-        call_duration,
-        reservation_date,
-        reservation_time,
-        upload_date,
-        last_modified_date
-      FROM customers
-      WHERE customer_id = ?`,
-      [customerId]
+        c.customer_id,
+        c.db_id,
+        c.assigned_user_id,
+        c.event_name,
+        c.customer_phone,
+        c.customer_name,
+        c.customer_info1,
+        c.customer_info2,
+        c.customer_info3,
+        c.data_status,
+        c.call_result,
+        c.consultation_result,
+        c.memo,
+        c.call_datetime,
+        c.call_start_time,
+        c.call_end_time,
+        c.call_duration,
+        c.reservation_date,
+        c.reservation_time,
+        c.upload_date,
+        c.last_modified_date
+      FROM customers c
+      JOIN db_lists d ON c.db_id = d.db_id
+      WHERE c.customer_id = ? AND d.company_id = ?`,
+      [customerId, user.companyId]
     )
 
     if (!customers || customers.length === 0) {
@@ -88,6 +91,7 @@ export async function GET(
     return successResponse({
       customerId: customer.customer_id,
       dbId: customer.db_id,
+      assignedUserId: customer.assigned_user_id,
       eventName: customer.event_name || '',
       phone: customer.customer_phone,
       name: customer.customer_name,
