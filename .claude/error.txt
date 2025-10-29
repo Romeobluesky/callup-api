@@ -1,0 +1,54 @@
+0|callup-api  | 2025-10-29 17:42:03: ❌ Database query error: Error: Unknown column 'company_login_id' in 'where clause'
+0|callup-api  | 2025-10-29 17:42:03:     at i.execute (.next/server/chunks/382.js:1:133308)
+0|callup-api  | 2025-10-29 17:42:03:     at i (.next/server/app/api/admin/companies/[companyId]/route.js:1:1479)
+0|callup-api  | 2025-10-29 17:42:03:     at x (.next/server/app/api/dashboard/route.js:9:395)
+0|callup-api  | 2025-10-29 17:42:03:     at async k (.next/server/app/api/dashboard/route.js:27:3531)
+0|callup-api  | 2025-10-29 17:42:03:     at async g (.next/server/app/api/dashboard/route.js:27:4534)
+0|callup-api  | 2025-10-29 17:42:03:     at async D (.next/server/app/api/dashboard/route.js:27:5656) {
+0|callup-api  | 2025-10-29 17:42:03:   code: 'ER_BAD_FIELD_ERROR',
+0|callup-api  | 2025-10-29 17:42:03:   errno: 1054,
+0|callup-api  | 2025-10-29 17:42:03:   sql: 'SELECT\n' +
+0|callup-api  | 2025-10-29 17:42:03:     '        COALESCE(total_call_count, 0) as call_count,\n' +
+0|callup-api  | 2025-10-29 17:42:03:     "        COALESCE(total_call_time, '00:00:00') as call_duration\n" +
+0|callup-api  | 2025-10-29 17:42:03:     '      FROM statistics\n' +
+0|callup-api  | 2025-10-29 17:42:03:     '      WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()',
+0|callup-api  | 2025-10-29 17:42:03:   sqlState: '42S22',
+0|callup-api  | 2025-10-29 17:42:03:   sqlMessage: "Unknown column 'company_login_id' in 'where clause'"
+0|callup-api  | 2025-10-29 17:42:03: }
+0|callup-api  | 2025-10-29 17:42:03: === Dashboard API Error ===
+0|callup-api  | 2025-10-29 17:42:03: Error Type: Error
+0|callup-api  | 2025-10-29 17:42:03: Error Message: Unknown column 'company_login_id' in 'where clause'
+0|callup-api  | 2025-10-29 17:42:03: Error Code: ER_BAD_FIELD_ERROR
+0|callup-api  | 2025-10-29 17:42:03: Error SQL: SELECT
+0|callup-api  | 2025-10-29 17:42:03:         COALESCE(total_call_count, 0) as call_count,
+0|callup-api  | 2025-10-29 17:42:03:         COALESCE(total_call_time, '00:00:00') as call_duration
+0|callup-api  | 2025-10-29 17:42:03:       FROM statistics
+0|callup-api  | 2025-10-29 17:42:03:       WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()
+0|callup-api  | 2025-10-29 17:42:03: Error Stack: Error: Unknown column 'company_login_id' in 'where clause'
+0|callup-api  | 2025-10-29 17:42:03:     at i.execute (/home/callup-api/.next/server/chunks/382.js:1:133308)
+0|callup-api  | 2025-10-29 17:42:03:     at i (/home/callup-api/.next/server/app/api/admin/companies/[companyId]/route.js:1:1479)
+0|callup-api  | 2025-10-29 17:42:03:     at x (/home/callup-api/.next/server/app/api/dashboard/route.js:9:395)
+0|callup-api  | 2025-10-29 17:42:03:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|callup-api  | 2025-10-29 17:42:03:     at async rN.do (/home/callup-api/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:5:21042)
+0|callup-api  | 2025-10-29 17:42:03:     at async rN.handle (/home/callup-api/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:5:25860)
+0|callup-api  | 2025-10-29 17:42:03:     at async k (/home/callup-api/.next/server/app/api/dashboard/route.js:27:3531)
+0|callup-api  | 2025-10-29 17:42:03:     at async rN.handleResponse (/home/callup-api/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:1:105568)
+0|callup-api  | 2025-10-29 17:42:03:     at async g (/home/callup-api/.next/server/app/api/dashboard/route.js:27:4534)
+0|callup-api  | 2025-10-29 17:42:03:     at async D (/home/callup-api/.next/server/app/api/dashboard/route.js:27:5656)
+0|callup-api  | 2025-10-29 17:42:03: Server error: Error: Unknown column 'company_login_id' in 'where clause'
+0|callup-api  | 2025-10-29 17:42:03:     at i.execute (.next/server/chunks/382.js:1:133308)
+0|callup-api  | 2025-10-29 17:42:03:     at i (.next/server/app/api/admin/companies/[companyId]/route.js:1:1479)
+0|callup-api  | 2025-10-29 17:42:03:     at x (.next/server/app/api/dashboard/route.js:9:395)
+0|callup-api  | 2025-10-29 17:42:03:     at async k (.next/server/app/api/dashboard/route.js:27:3531)
+0|callup-api  | 2025-10-29 17:42:03:     at async g (.next/server/app/api/dashboard/route.js:27:4534)
+0|callup-api  | 2025-10-29 17:42:03:     at async D (.next/server/app/api/dashboard/route.js:27:5656) {
+0|callup-api  | 2025-10-29 17:42:03:   code: 'ER_BAD_FIELD_ERROR',
+0|callup-api  | 2025-10-29 17:42:03:   errno: 1054,
+0|callup-api  | 2025-10-29 17:42:03:   sql: 'SELECT\n' +
+0|callup-api  | 2025-10-29 17:42:03:     '        COALESCE(total_call_count, 0) as call_count,\n' +
+0|callup-api  | 2025-10-29 17:42:03:     "        COALESCE(total_call_time, '00:00:00') as call_duration\n" +
+0|callup-api  | 2025-10-29 17:42:03:     '      FROM statistics\n' +
+0|callup-api  | 2025-10-29 17:42:03:     '      WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()',
+0|callup-api  | 2025-10-29 17:42:03:   sqlState: '42S22',
+0|callup-api  | 2025-10-29 17:42:03:   sqlMessage: "Unknown column 'company_login_id' in 'where clause'"
+0|callup-api  | 2025-10-29 17:42:03: }
