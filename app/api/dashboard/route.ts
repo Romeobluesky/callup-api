@@ -98,24 +98,24 @@ export async function GET(request: NextRequest) {
       callback: 0,
     }
 
-    // 4. Get DB lists (최근 3개) - 실시간 미사용 카운트
+    // 4. Get DB lists (최근 3개) - 상담원에게 분배된 고객만 카운트
     console.log('=== Step 4: DB Lists 조회 ===')
-    console.log('Query params:', [user.companyLoginId])
+    console.log('Query params:', [user.userId, user.companyLoginId])
 
     const dbListsResult = await query<DbList[]>(
       `SELECT
         dl.db_id,
         dl.db_date as upload_date,
         dl.db_title as file_name,
-        dl.total_count,
+        COUNT(c.customer_id) AS total_count,
         COUNT(CASE WHEN c.data_status = '미사용' THEN 1 END) AS unused_count
       FROM db_lists dl
-      LEFT JOIN customers c ON c.db_id = dl.db_id
+      LEFT JOIN customers c ON c.db_id = dl.db_id AND c.assigned_user_id = ?
       WHERE dl.company_login_id = ? AND dl.is_active = TRUE
-      GROUP BY dl.db_id, dl.db_date, dl.db_title, dl.total_count
+      GROUP BY dl.db_id, dl.db_date, dl.db_title
       ORDER BY dl.db_date DESC
       LIMIT 3`,
-      [user.companyLoginId]
+      [user.userId, user.companyLoginId]
     )
 
     console.log('DB Lists 조회 결과:', dbListsResult)

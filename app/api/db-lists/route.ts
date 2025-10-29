@@ -29,37 +29,41 @@ export async function GET(request: NextRequest) {
     let dbLists: DbListRecord[]
 
     if (search) {
-      // Search with title filter
+      // Search with title filter - 상담원에게 분배된 고객만 카운트
       dbLists = await query<DbListRecord[]>(
         `SELECT
-          db_id,
-          company_id,
-          db_date,
-          db_title,
-          total_count,
-          unused_count,
-          is_active
-        FROM db_lists
-        WHERE company_login_id = ?
-          AND db_title LIKE ?
-        ORDER BY db_date DESC`,
-        [user.companyLoginId, `%${search}%`]
+          dl.db_id,
+          dl.company_id,
+          dl.db_date,
+          dl.db_title,
+          COUNT(c.customer_id) AS total_count,
+          COUNT(CASE WHEN c.data_status = '미사용' THEN 1 END) AS unused_count,
+          dl.is_active
+        FROM db_lists dl
+        LEFT JOIN customers c ON c.db_id = dl.db_id AND c.assigned_user_id = ?
+        WHERE dl.company_login_id = ?
+          AND dl.db_title LIKE ?
+        GROUP BY dl.db_id, dl.company_id, dl.db_date, dl.db_title, dl.is_active
+        ORDER BY dl.db_date DESC`,
+        [user.userId, user.companyLoginId, `%${search}%`]
       )
     } else {
-      // Get all DB lists for company
+      // Get all DB lists for company - 상담원에게 분배된 고객만 카운트
       dbLists = await query<DbListRecord[]>(
         `SELECT
-          db_id,
-          company_id,
-          db_date,
-          db_title,
-          total_count,
-          unused_count,
-          is_active
-        FROM db_lists
-        WHERE company_login_id = ?
-        ORDER BY db_date DESC`,
-        [user.companyLoginId]
+          dl.db_id,
+          dl.company_id,
+          dl.db_date,
+          dl.db_title,
+          COUNT(c.customer_id) AS total_count,
+          COUNT(CASE WHEN c.data_status = '미사용' THEN 1 END) AS unused_count,
+          dl.is_active
+        FROM db_lists dl
+        LEFT JOIN customers c ON c.db_id = dl.db_id AND c.assigned_user_id = ?
+        WHERE dl.company_login_id = ?
+        GROUP BY dl.db_id, dl.company_id, dl.db_date, dl.db_title, dl.is_active
+        ORDER BY dl.db_date DESC`,
+        [user.userId, user.companyLoginId]
       )
     }
 
