@@ -57,9 +57,9 @@ export async function GET(request: NextRequest) {
       FROM customers c
       JOIN db_lists d ON c.db_id = d.db_id
       LEFT JOIN call_logs cl ON c.customer_id = cl.customer_id
-      WHERE d.company_id = ?`
+      WHERE d.company_login_id = ?`
 
-    const queryParams: any[] = [user.companyId]
+    const queryParams: any[] = [user.companyLoginId]
 
     if (name) {
       searchQuery += ` AND c.customer_name LIKE ?`
@@ -95,9 +95,9 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as total
       FROM customers c
       JOIN db_lists d ON c.db_id = d.db_id
-      WHERE d.company_id = ?`
+      WHERE d.company_login_id = ?`
 
-    const countParams: any[] = [user.companyId]
+    const countParams: any[] = [user.companyLoginId]
 
     if (name) {
       countQuery += ` AND c.customer_name LIKE ?`

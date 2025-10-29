@@ -36,12 +36,12 @@ export async function PUT(
       return errorResponse('isActive 값이 필요합니다.', 'MISSING_FIELDS', 400)
     }
 
-    // Update DB list status with company_id check
+    // Update DB list status with company_login_id check
     await query(
       `UPDATE db_lists
        SET is_active = ?
-       WHERE db_id = ? AND company_id = ?`,
-      [body.isActive, dbId, user.companyId]
+       WHERE db_id = ? AND company_login_id = ?`,
+      [body.isActive, dbId, user.companyLoginId]
     )
 
     return successResponse(

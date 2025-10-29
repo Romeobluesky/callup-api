@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(callback_count), 0) AS callback_count,
         COALESCE(SUM(no_answer_count), 0) AS no_answer_count
       FROM statistics
-      WHERE company_id = ? AND user_id = ? ${dateCondition}`,
-      [user.companyId, user.userId]
+      WHERE company_login_id = ? AND user_id = ? ${dateCondition}`,
+      [user.companyLoginId, user.userId]
     )
 
     const stats = statsResult?.[0] || {
@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
         COALESCE(COUNT(DISTINCT db_id), 0) AS assigned_db_count,
         COALESCE(SUM(unused_count), 0) AS unused_db_count
       FROM db_lists
-      WHERE company_id = ? AND is_active = TRUE`,
-      [user.companyId]
+      WHERE company_login_id = ? AND is_active = TRUE`,
+      [user.companyLoginId]
     )
 
     const dbStats = dbStatsResult?.[0] || {

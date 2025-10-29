@@ -85,15 +85,15 @@ export async function GET(request: NextRequest) {
 
     // 2. Get today's statistics
     console.log('=== Step 2: Statistics 조회 ===')
-    console.log('Query params:', [user.companyId, user.userId])
+    console.log('Query params:', [user.companyLoginId, user.userId])
 
     const todayStatsResult = await query<TodayStats[]>(
       `SELECT
         COALESCE(total_call_count, 0) as call_count,
         COALESCE(total_call_time, '00:00:00') as call_duration
       FROM statistics
-      WHERE company_id = ? AND user_id = ? AND stat_date = CURDATE()`,
-      [user.companyId, user.userId]
+      WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()`,
+      [user.companyLoginId, user.userId]
     )
 
     console.log('Statistics 조회 결과:', todayStatsResult)
@@ -112,8 +112,8 @@ export async function GET(request: NextRequest) {
         COALESCE(failed_count, 0) AS failed,
         COALESCE(callback_count, 0) AS callback
       FROM statistics
-      WHERE company_id = ? AND user_id = ? AND stat_date = CURDATE()`,
-      [user.companyId, user.userId]
+      WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()`,
+      [user.companyLoginId, user.userId]
     )
 
     console.log('Call Results 조회 결과:', callResultsResult)
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     // 4. Get DB lists (최근 3개)
     console.log('=== Step 4: DB Lists 조회 ===')
-    console.log('Query params:', [user.companyId])
+    console.log('Query params:', [user.companyLoginId])
 
     const dbListsResult = await query<DbList[]>(
       `SELECT
@@ -136,10 +136,10 @@ export async function GET(request: NextRequest) {
         total_count,
         unused_count
       FROM db_lists
-      WHERE company_id = ? AND is_active = TRUE
+      WHERE company_login_id = ? AND is_active = TRUE
       ORDER BY db_date DESC
       LIMIT 3`,
-      [user.companyId]
+      [user.companyLoginId]
     )
 
     console.log('DB Lists 조회 결과:', dbListsResult)

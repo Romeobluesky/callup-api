@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
           unused_count,
           is_active
         FROM db_lists
-        WHERE company_id = ?
+        WHERE company_login_id = ?
           AND db_title LIKE ?
         ORDER BY db_date DESC`,
-        [user.companyId, `%${search}%`]
+        [user.companyLoginId, `%${search}%`]
       )
     } else {
       // Get all DB lists for company
@@ -57,9 +57,9 @@ export async function GET(request: NextRequest) {
           unused_count,
           is_active
         FROM db_lists
-        WHERE company_id = ?
+        WHERE company_login_id = ?
         ORDER BY db_date DESC`,
-        [user.companyId]
+        [user.companyLoginId]
       )
     }
 

@@ -76,8 +76,8 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(success_count), 0) AS success_count,
         COALESCE(SUM(failed_count), 0) AS failed_count
       FROM statistics
-      WHERE company_id = ? ${dateCondition}`,
-      [user.companyId]
+      WHERE company_login_id = ? ${dateCondition}`,
+      [user.companyLoginId]
     )
 
     const companyStats = companyStatsResult?.[0] || {
@@ -97,10 +97,10 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(s.success_count), 0) AS success_count
       FROM statistics s
       JOIN users u ON s.user_id = u.user_id
-      WHERE s.company_id = ? ${dateCondition}
+      WHERE s.company_login_id = ? ${dateCondition}
       GROUP BY u.user_id, u.user_name
       ORDER BY call_count DESC`,
-      [user.companyId]
+      [user.companyLoginId]
     )
 
     const agentStats = (agentStatsResult || []).map((agent) => ({

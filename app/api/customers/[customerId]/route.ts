@@ -78,8 +78,8 @@ export async function GET(
         c.last_modified_date
       FROM customers c
       JOIN db_lists d ON c.db_id = d.db_id
-      WHERE c.customer_id = ? AND d.company_id = ?`,
-      [customerId, user.companyId]
+      WHERE c.customer_id = ? AND d.company_login_id = ?`,
+      [customerId, user.companyLoginId]
     )
 
     if (!customers || customers.length === 0) {
