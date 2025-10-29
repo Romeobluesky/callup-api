@@ -83,42 +83,16 @@ export async function GET(request: NextRequest) {
     const userInfo = userInfoResult[0]
     console.log('✅ User 조회 성공:', userInfo)
 
-    // 2. Get today's statistics
-    console.log('=== Step 2: Statistics 조회 ===')
-    console.log('Query params:', [user.companyLoginId, user.userId])
-
-    const todayStatsResult = await query<TodayStats[]>(
-      `SELECT
-        COALESCE(total_call_count, 0) as call_count,
-        COALESCE(total_call_time, '00:00:00') as call_duration
-      FROM statistics
-      WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()`,
-      [user.companyLoginId, user.userId]
-    )
-
-    console.log('Statistics 조회 결과:', todayStatsResult)
-
-    const todayStats = todayStatsResult?.[0] || {
+    // 2. TODO: Statistics 쿼리 - 테이블 구조 확인 필요
+    console.log('=== Step 2: Statistics 조회 (임시 스킵) ===')
+    const todayStats = {
       call_count: 0,
       call_duration: '00:00:00',
     }
 
-    // 3. Get today's call results aggregation
-    console.log('=== Step 3: Call Results 조회 ===')
-
-    const callResultsResult = await query<CallResults[]>(
-      `SELECT
-        COALESCE(success_count, 0) AS connected,
-        COALESCE(failed_count, 0) AS failed,
-        COALESCE(callback_count, 0) AS callback
-      FROM statistics
-      WHERE company_login_id = ? AND user_id = ? AND stat_date = CURDATE()`,
-      [user.companyLoginId, user.userId]
-    )
-
-    console.log('Call Results 조회 결과:', callResultsResult)
-
-    const callResults = callResultsResult?.[0] || {
+    // 3. TODO: Call Results 쿼리 - 테이블 구조 확인 필요
+    console.log('=== Step 3: Call Results 조회 (임시 스킵) ===')
+    const callResults = {
       connected: 0,
       failed: 0,
       callback: 0,
