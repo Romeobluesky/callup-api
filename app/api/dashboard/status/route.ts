@@ -27,14 +27,14 @@ export async function PUT(request: NextRequest) {
       return errorResponse('isOn 값이 필요합니다.', 'MISSING_FIELDS', 400)
     }
 
-    // Update user status
+    // Update user status (company_login_id 사용)
     const statusMessage = body.isOn ? '업무 중' : '대기 중'
 
     await query(
       `UPDATE users
        SET user_status_message = ?
-       WHERE user_id = ? AND company_id = ?`,
-      [statusMessage, user.userId, user.companyId]
+       WHERE user_id = ? AND company_login_id = ?`,
+      [statusMessage, user.userId, user.companyLoginId]
     )
 
     return successResponse(

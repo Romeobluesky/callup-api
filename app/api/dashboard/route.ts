@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse('인증이 필요합니다.')
     }
 
-    // 1. Get user information
+    // 1. Get user information (company_login_id 사용)
     const userInfoResult = await query<UserInfo[]>(
       `SELECT
         user_id,
@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
         is_active,
         last_login_at as updated_at
       FROM users
-      WHERE user_id = ? AND company_id = ?`,
-      [user.userId, user.companyId]
+      WHERE user_id = ? AND company_login_id = ?`,
+      [user.userId, user.companyLoginId]
     )
 
     if (!userInfoResult || userInfoResult.length === 0) {

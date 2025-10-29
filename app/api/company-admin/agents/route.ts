@@ -52,12 +52,13 @@ export async function GET(request: NextRequest) {
       return errorResponse('업체 정보를 찾을 수 없습니다.', 'COMPANY_NOT_FOUND', 404)
     }
 
-    // Get agents list
+    // Get agents list (company_login_id 사용)
     const agents = await query<AgentRecord[]>(
-      `SELECT user_id, user_name, user_phone, user_status_message, is_active, last_login_at
-       FROM users
-       WHERE company_id = ?
-       ORDER BY user_name`,
+      `SELECT u.user_id, u.user_name, u.user_phone, u.user_status_message, u.is_active, u.last_login_at
+       FROM users u
+       JOIN companies c ON u.company_login_id = c.company_login_id
+       WHERE c.company_id = ?
+       ORDER BY u.user_name`,
       [user.companyId]
     )
 
@@ -119,11 +120,13 @@ export async function POST(request: NextRequest) {
       return errorResponse('최대 상담원 수를 초과했습니다.', 'MAX_AGENTS_EXCEEDED', 400)
     }
 
-    // Insert new agent
+    // Insert new agent (company_login_id 사용)
     const result: any = await query(
-      `INSERT INTO users (company_id, user_name, user_phone)
-       VALUES (?, ?, ?)`,
-      [user.companyId, body.userName, body.userPhone]
+      `INSERT INTO users (company_login_id, user_name, user_phone)
+       SELECT company_login_id, ?, ?
+       FROM companies
+       WHERE company_id = ?`,
+      [body.userName, body.userPhone, user.companyId]
     )
 
     return successResponse(

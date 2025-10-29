@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { query } from '@/lib/db'
 import { generateToken } from '@/lib/jwt'
 import { successResponse, errorResponse, serverErrorResponse } from '@/lib/response'
@@ -12,6 +11,7 @@ interface LoginRequest {
 
 interface CompanyRecord {
   company_id: number
+  company_login_id: string
   company_name: string
   max_agents: number
   is_active: boolean
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: 업체 인증
     const companies = await query<CompanyRecord[]>(
-      `SELECT company_id, company_name, max_agents, is_active
+      `SELECT company_id, company_login_id, company_name, max_agents, is_active
        FROM companies
        WHERE company_login_id = ? AND company_password = SHA2(?, 256)`,
       [body.companyLoginId, body.companyPassword]
@@ -59,12 +59,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('비활성화된 업체입니다. (구독 만료)', 'AUTH_COMPANY_INACTIVE', 403)
     }
 
-    // Step 2: 상담원 조회
+    // Step 2: 상담원 조회 (company_login_id 사용)
     const users = await query<UserRecord[]>(
       `SELECT user_id, user_name, user_phone, user_status_message, is_active, last_login_at
        FROM users
-       WHERE company_id = ? AND user_name = ?`,
-      [company.company_id, body.userName]
+       WHERE company_login_id = ? AND user_name = ?`,
+      [company.company_login_id, body.userName]
     )
 
     // Check if user exists
@@ -85,10 +85,11 @@ export async function POST(request: NextRequest) {
       [user.user_id]
     )
 
-    // Step 4: JWT 토큰 생성
+    // Step 4: JWT 토큰 생성 (companyLoginId 추가)
     const token = generateToken({
       userId: user.user_id,
       companyId: company.company_id,
+      companyLoginId: company.company_login_id,
       userName: user.user_name,
       role: 'agent',
     })
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
         },
         company: {
           companyId: company.company_id,
+          companyLoginId: company.company_login_id,
           companyName: company.company_name,
           maxAgents: company.max_agents,
           isActive: company.is_active,

@@ -6,6 +6,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
 export interface JwtPayload {
   userId: number
   companyId: number
+  companyLoginId: string
   userName: string
   role: 'super_admin' | 'company_admin' | 'agent'
   iat?: number

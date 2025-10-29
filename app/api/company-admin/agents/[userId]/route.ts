@@ -32,9 +32,12 @@ export async function DELETE(
       return errorResponse('유효하지 않은 사용자 ID입니다.', 'INVALID_USER_ID', 400)
     }
 
-    // Deactivate agent (soft delete)
+    // Deactivate agent (soft delete, company_login_id 사용)
     await query(
-      'UPDATE users SET is_active = FALSE WHERE user_id = ? AND company_id = ?',
+      `UPDATE users u
+       JOIN companies c ON u.company_login_id = c.company_login_id
+       SET u.is_active = FALSE
+       WHERE u.user_id = ? AND c.company_id = ?`,
       [userId, user.companyId]
     )
 
