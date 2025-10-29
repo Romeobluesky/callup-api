@@ -37,14 +37,28 @@ interface DbList {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('=== Dashboard API Start ===')
+
     // Authenticate user
     const user = authenticate(request)
 
     if (!user) {
+      console.error('❌ JWT 인증 실패')
       return unauthorizedResponse('인증이 필요합니다.')
     }
 
+    console.log('✅ JWT 인증 성공:', {
+      userId: user.userId,
+      companyId: user.companyId,
+      companyLoginId: user.companyLoginId,
+      userName: user.userName,
+      role: user.role
+    })
+
     // 1. Get user information (company_login_id 사용)
+    console.log('=== Step 1: Users 테이블 조회 ===')
+    console.log('Query params:', [user.userId, user.companyLoginId])
+
     const userInfoResult = await query<UserInfo[]>(
       `SELECT
         user_id,
@@ -58,13 +72,21 @@ export async function GET(request: NextRequest) {
       [user.userId, user.companyLoginId]
     )
 
+    console.log('Users 조회 결과:', userInfoResult)
+    console.log('Users 개수:', userInfoResult?.length)
+
     if (!userInfoResult || userInfoResult.length === 0) {
+      console.error('❌ 사용자 정보 없음')
       return unauthorizedResponse('사용자 정보를 찾을 수 없습니다.')
     }
 
     const userInfo = userInfoResult[0]
+    console.log('✅ User 조회 성공:', userInfo)
 
     // 2. Get today's statistics
+    console.log('=== Step 2: Statistics 조회 ===')
+    console.log('Query params:', [user.companyId, user.userId])
+
     const todayStatsResult = await query<TodayStats[]>(
       `SELECT
         COALESCE(total_call_count, 0) as call_count,
@@ -74,12 +96,16 @@ export async function GET(request: NextRequest) {
       [user.companyId, user.userId]
     )
 
+    console.log('Statistics 조회 결과:', todayStatsResult)
+
     const todayStats = todayStatsResult?.[0] || {
       call_count: 0,
       call_duration: '00:00:00',
     }
 
     // 3. Get today's call results aggregation
+    console.log('=== Step 3: Call Results 조회 ===')
+
     const callResultsResult = await query<CallResults[]>(
       `SELECT
         COALESCE(success_count, 0) AS connected,
@@ -90,6 +116,8 @@ export async function GET(request: NextRequest) {
       [user.companyId, user.userId]
     )
 
+    console.log('Call Results 조회 결과:', callResultsResult)
+
     const callResults = callResultsResult?.[0] || {
       connected: 0,
       failed: 0,
@@ -97,6 +125,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Get DB lists (최근 3개)
+    console.log('=== Step 4: DB Lists 조회 ===')
+    console.log('Query params:', [user.companyId])
+
     const dbListsResult = await query<DbList[]>(
       `SELECT
         db_id,
@@ -111,6 +142,9 @@ export async function GET(request: NextRequest) {
       [user.companyId]
     )
 
+    console.log('DB Lists 조회 결과:', dbListsResult)
+    console.log('DB Lists 개수:', dbListsResult?.length)
+
     const dbLists =
       dbListsResult?.map((db) => ({
         dbId: db.db_id,
@@ -121,6 +155,7 @@ export async function GET(request: NextRequest) {
       })) || []
 
     // Return dashboard data (필드명 통일: userPhone, userStatusMessage)
+    console.log('=== Step 5: 응답 생성 ===')
     return successResponse({
       user: {
         userId: userInfo.user_id,
@@ -142,7 +177,12 @@ export async function GET(request: NextRequest) {
       dbLists,
     })
   } catch (error: any) {
-    console.error('Dashboard error:', error)
+    console.error('=== Dashboard API Error ===')
+    console.error('Error Type:', error?.constructor?.name)
+    console.error('Error Message:', error?.message)
+    console.error('Error Code:', error?.code)
+    console.error('Error SQL:', error?.sql)
+    console.error('Error Stack:', error?.stack)
     return serverErrorResponse('대시보드 조회 중 오류가 발생했습니다.', error)
   }
 }

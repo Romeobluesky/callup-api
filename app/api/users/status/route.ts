@@ -46,14 +46,15 @@ export async function PATCH(request: NextRequest) {
     // Add updated_at timestamp
     updateFields.push('updated_at = CURRENT_TIMESTAMP')
 
-    // Add user_id for WHERE clause
+    // Add user_id and company_login_id for WHERE clause (보안)
     updateValues.push(user.userId)
+    updateValues.push(user.companyLoginId)
 
-    // Execute update query
+    // Execute update query (company_login_id 조건 추가)
     await query(
       `UPDATE users
        SET ${updateFields.join(', ')}
-       WHERE user_id = ?`,
+       WHERE user_id = ? AND company_login_id = ?`,
       updateValues
     )
 

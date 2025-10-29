@@ -104,12 +104,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('userName과 userPhone이 필요합니다.', 'MISSING_FIELDS', 400)
     }
 
-    // Check current agent count
+    // Check current agent count (company_login_id로 JOIN)
     const agentCountResult = await query<{ current_count: number; max_agents: number }[]>(
       `SELECT COUNT(*) AS current_count, c.max_agents
        FROM users u
-       JOIN companies c ON u.company_id = c.company_id
-       WHERE u.company_id = ? AND u.is_active = TRUE
+       JOIN companies c ON u.company_login_id = c.company_login_id
+       WHERE c.company_id = ? AND u.is_active = TRUE
        GROUP BY c.max_agents`,
       [user.companyId]
     )
