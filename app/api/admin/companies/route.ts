@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         c.admin_email,
         c.created_at
       FROM companies c
-      LEFT JOIN users u ON c.company_id = u.company_id AND u.is_active = TRUE
+      LEFT JOIN users u ON c.company_login_id = u.company_login_id AND u.is_active = TRUE
       GROUP BY c.company_id
       ORDER BY c.created_at DESC`,
       []

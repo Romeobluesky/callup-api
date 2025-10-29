@@ -120,13 +120,13 @@ export async function GET(request: NextRequest) {
         unusedCount: db.unused_count,
       })) || []
 
-    // Return dashboard data
+    // Return dashboard data (필드명 통일: userPhone, userStatusMessage)
     return successResponse({
       user: {
         userId: userInfo.user_id,
         userName: userInfo.user_name,
-        phone: userInfo.user_phone || '',
-        statusMessage: userInfo.user_status_message || '',
+        userPhone: userInfo.user_phone || '',
+        userStatusMessage: userInfo.user_status_message || '',
         isActive: userInfo.is_active,
         lastActiveTime: userInfo.updated_at,
       },
