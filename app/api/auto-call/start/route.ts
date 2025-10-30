@@ -49,11 +49,13 @@ export async function POST(request: NextRequest) {
     console.log('User:', { userId: user.userId, companyId: user.companyId })
     console.log('Body:', { dbId: body.dbId, count: body.count })
 
-    // Ensure count is a number
-    const limit = parseInt(String(body.count))
-    console.log('Query params:', [body.dbId, user.userId, limit])
+    // Ensure count is a safe number for LIMIT clause
+    const limit = Math.max(1, Math.min(1000, parseInt(String(body.count))))
+    console.log('Query params:', [body.dbId, user.userId])
+    console.log('LIMIT value:', limit)
 
     // 1. 내가 배정받은 미사용 고객 조회 (관리자가 이미 배정한 상태)
+    // Note: LIMIT를 직접 문자열로 삽입 (prepared statement binding 문제 회피)
     const customers = await query<Customer[]>(
       `SELECT customer_id, db_id, customer_name, customer_phone,
               customer_info1, customer_info2, customer_info3, event_name
@@ -62,8 +64,8 @@ export async function POST(request: NextRequest) {
          AND assigned_user_id = ?
          AND data_status = '미사용'
        ORDER BY customer_id
-       LIMIT ?`,
-      [body.dbId, user.userId, limit]
+       LIMIT ${limit}`,
+      [body.dbId, user.userId]
     )
 
     if (!customers || customers.length === 0) {
