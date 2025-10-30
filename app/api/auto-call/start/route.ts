@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('count는 1~1000 사이여야 합니다.', 'INVALID_COUNT', 400)
     }
 
+    // Debug log
+    console.log('=== Auto-call start request ===')
+    console.log('User:', { userId: user.userId, companyId: user.companyId })
+    console.log('Body:', { dbId: body.dbId, count: body.count })
+    console.log('Query params:', [body.dbId, user.userId, body.count])
+
     // 1. 내가 배정받은 미사용 고객 조회 (관리자가 이미 배정한 상태)
     const customers = await query<Customer[]>(
       `SELECT customer_id, db_id, customer_name, customer_phone,
