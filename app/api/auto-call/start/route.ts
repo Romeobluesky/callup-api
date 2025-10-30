@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { query, transaction } from '@/lib/db'
+import { query } from '@/lib/db'
 import { authenticate } from '@/lib/auth'
 import {
   successResponse,
@@ -44,50 +44,41 @@ export async function POST(request: NextRequest) {
       return errorResponse('count는 1~1000 사이여야 합니다.', 'INVALID_COUNT', 400)
     }
 
-    // Use transaction for data consistency
-    const result = await transaction(async (conn) => {
-      // 1. 미사용 고객 조회
-      const [customers] = await conn.execute<any>(
-        `SELECT customer_id, db_id, customer_name, customer_phone,
-                customer_info1, customer_info2, customer_info3, event_name
-         FROM customers
-         WHERE db_id = ?
-           AND data_status = '미사용'
-           AND (assigned_user_id IS NULL OR assigned_user_id = ?)
-         ORDER BY customer_id
-         LIMIT ?`,
-        [body.dbId, user.userId, body.count]
+    // 1. 내가 배정받은 미사용 고객 조회 (관리자가 이미 배정한 상태)
+    const customers = await query<Customer[]>(
+      `SELECT customer_id, db_id, customer_name, customer_phone,
+              customer_info1, customer_info2, customer_info3, event_name
+       FROM customers
+       WHERE db_id = ?
+         AND assigned_user_id = ?
+         AND data_status = '미사용'
+       ORDER BY customer_id
+       LIMIT ?`,
+      [body.dbId, user.userId, body.count]
+    )
+
+    if (!customers || customers.length === 0) {
+      return errorResponse(
+        '배정받은 미사용 고객이 없습니다.',
+        'NO_ASSIGNED_CUSTOMERS',
+        404
       )
+    }
 
-      if (!customers || customers.length === 0) {
-        throw new Error('사용 가능한 고객 데이터가 없습니다.')
-      }
+    // 2. 전체 미사용 개수 조회
+    const totalResult = await query<any[]>(
+      `SELECT COUNT(*) as total
+       FROM customers
+       WHERE db_id = ?
+         AND assigned_user_id = ?
+         AND data_status = '미사용'`,
+      [body.dbId, user.userId]
+    )
 
-      const customerIds = customers.map((c: Customer) => c.customer_id)
-
-      // 2. 고객 할당 정보 업데이트
-      await conn.execute(
-        `UPDATE customers
-         SET assigned_user_id = ?
-         WHERE customer_id IN (${customerIds.map(() => '?').join(',')})`,
-        [user.userId, ...customerIds]
-      )
-
-      // 3. DB 할당 추적
-      await conn.execute(
-        `INSERT INTO db_assignments (db_id, user_id, company_id, assigned_count)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-           assigned_count = assigned_count + ?,
-           updated_at = NOW()`,
-        [body.dbId, user.userId, user.companyId, customers.length, customers.length]
-      )
-
-      return customers
-    })
+    const totalCount = totalResult[0]?.total || 0
 
     // Format response
-    const formattedCustomers = result.map((c: Customer) => ({
+    const formattedCustomers = customers.map((c: Customer) => ({
       customerId: c.customer_id,
       dbId: c.db_id,
       name: c.customer_name,
@@ -96,14 +87,15 @@ export async function POST(request: NextRequest) {
       info2: c.customer_info2 || '',
       info3: c.customer_info3 || '',
       eventName: c.event_name || '',
+      dataStatus: '미사용',
     }))
 
     return successResponse(
       {
         customers: formattedCustomers,
-        totalCount: formattedCustomers.length,
+        totalCount: totalCount,
       },
-      '자동 통화 준비 완료',
+      '고객 큐 조회 성공',
       200
     )
   } catch (error: any) {
