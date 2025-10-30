@@ -54,12 +54,12 @@ export async function POST(request: NextRequest) {
       // 1. 통화 로그 삽입
       const [logResult] = await conn.execute(
         `INSERT INTO call_logs (
-          company_id, user_id, customer_id, db_id,
+          company_login_id, user_id, customer_id, db_id,
           call_datetime, call_start_time, call_end_time, call_duration,
           call_result, consultation_result, memo
         ) VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)`,
         [
-          user.companyId,
+          user.companyLoginId,
           user.userId,
           body.customerId,
           body.dbId,
