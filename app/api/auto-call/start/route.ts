@@ -76,17 +76,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. 전체 미사용 개수 조회
+    // 2. 전체 배정받은 고객 개수 조회 (미사용 + 사용완료 모두 포함)
     const totalResult = await query<any[]>(
       `SELECT COUNT(*) as total
        FROM customers
        WHERE db_id = ?
-         AND assigned_user_id = ?
-         AND data_status = '미사용'`,
+         AND assigned_user_id = ?`,
       [body.dbId, user.userId]
     )
 
     const totalCount = totalResult[0]?.total || 0
+    console.log('전체 배정받은 고객 수:', totalCount)
 
     // Format response
     const formattedCustomers = customers.map((c: Customer) => ({
