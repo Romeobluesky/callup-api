@@ -48,7 +48,10 @@ export async function POST(request: NextRequest) {
     console.log('=== Auto-call start request ===')
     console.log('User:', { userId: user.userId, companyId: user.companyId })
     console.log('Body:', { dbId: body.dbId, count: body.count })
-    console.log('Query params:', [body.dbId, user.userId, body.count])
+
+    // Ensure count is a number
+    const limit = parseInt(String(body.count))
+    console.log('Query params:', [body.dbId, user.userId, limit])
 
     // 1. 내가 배정받은 미사용 고객 조회 (관리자가 이미 배정한 상태)
     const customers = await query<Customer[]>(
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
          AND data_status = '미사용'
        ORDER BY customer_id
        LIMIT ?`,
-      [body.dbId, user.userId, body.count]
+      [body.dbId, user.userId, limit]
     )
 
     if (!customers || customers.length === 0) {

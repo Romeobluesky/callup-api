@@ -1,0 +1,64 @@
+0|callup-api  | 2025-10-30 14:49:54: === Auto-call start request ===
+0|callup-api  | 2025-10-30 14:49:54: User: { userId: 2, companyId: 2 }
+0|callup-api  | 2025-10-30 14:49:54: Body: { dbId: 1, count: 100 }
+0|callup-api  | 2025-10-30 14:49:54: Query params: [ 1, 2, 100 ]
+0|callup-api  | 2025-10-30 14:49:54: ❌ Database query error: Error: Incorrect arguments to mysqld_stmt_execute
+0|callup-api  | 2025-10-30 14:49:54:     at i.execute (.next/server/chunks/382.js:1:133308)
+0|callup-api  | 2025-10-30 14:49:54:     at i (.next/server/app/api/admin/companies/[companyId]/route.js:1:1479)
+0|callup-api  | 2025-10-30 14:49:54:     at x (.next/server/app/api/auto-call/start/route.js:1:3463)
+0|callup-api  | 2025-10-30 14:49:54:     at async k (.next/server/app/api/auto-call/start/route.js:12:3085)
+0|callup-api  | 2025-10-30 14:49:54:     at async g (.next/server/app/api/auto-call/start/route.js:12:4088)
+0|callup-api  | 2025-10-30 14:49:54:     at async D (.next/server/app/api/auto-call/start/route.js:12:5210) {
+0|callup-api  | 2025-10-30 14:49:54:   code: 'ER_WRONG_ARGUMENTS',
+0|callup-api  | 2025-10-30 14:49:54:   errno: 1210,
+0|callup-api  | 2025-10-30 14:49:54:   sql: 'SELECT customer_id, db_id, customer_name, customer_phone,\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '              customer_info1, customer_info2, customer_info3, event_name\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       FROM customers\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       WHERE db_id = ?\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '         AND assigned_user_id = ?\n' +
+0|callup-api  | 2025-10-30 14:49:54:     "         AND data_status = '미사용'\n" +
+0|callup-api  | 2025-10-30 14:49:54:     '       ORDER BY customer_id\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       LIMIT ?',
+0|callup-api  | 2025-10-30 14:49:54:   sqlState: 'HY000',
+0|callup-api  | 2025-10-30 14:49:54:   sqlMessage: 'Incorrect arguments to mysqld_stmt_execute'
+0|callup-api  | 2025-10-30 14:49:54: }
+0|callup-api  | 2025-10-30 14:49:54: Auto call start error: Error: Incorrect arguments to mysqld_stmt_execute
+0|callup-api  | 2025-10-30 14:49:54:     at i.execute (.next/server/chunks/382.js:1:133308)
+0|callup-api  | 2025-10-30 14:49:54:     at i (.next/server/app/api/admin/companies/[companyId]/route.js:1:1479)
+0|callup-api  | 2025-10-30 14:49:54:     at x (.next/server/app/api/auto-call/start/route.js:1:3463)
+0|callup-api  | 2025-10-30 14:49:54:     at async k (.next/server/app/api/auto-call/start/route.js:12:3085)
+0|callup-api  | 2025-10-30 14:49:54:     at async g (.next/server/app/api/auto-call/start/route.js:12:4088)
+0|callup-api  | 2025-10-30 14:49:54:     at async D (.next/server/app/api/auto-call/start/route.js:12:5210) {
+0|callup-api  | 2025-10-30 14:49:54:   code: 'ER_WRONG_ARGUMENTS',
+0|callup-api  | 2025-10-30 14:49:54:   errno: 1210,
+0|callup-api  | 2025-10-30 14:49:54:   sql: 'SELECT customer_id, db_id, customer_name, customer_phone,\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '              customer_info1, customer_info2, customer_info3, event_name\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       FROM customers\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       WHERE db_id = ?\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '         AND assigned_user_id = ?\n' +
+0|callup-api  | 2025-10-30 14:49:54:     "         AND data_status = '미사용'\n" +
+0|callup-api  | 2025-10-30 14:49:54:     '       ORDER BY customer_id\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       LIMIT ?',
+0|callup-api  | 2025-10-30 14:49:54:   sqlState: 'HY000',
+0|callup-api  | 2025-10-30 14:49:54:   sqlMessage: 'Incorrect arguments to mysqld_stmt_execute'
+0|callup-api  | 2025-10-30 14:49:54: }
+0|callup-api  | 2025-10-30 14:49:54: Server error: Error: Incorrect arguments to mysqld_stmt_execute
+0|callup-api  | 2025-10-30 14:49:54:     at i.execute (.next/server/chunks/382.js:1:133308)
+0|callup-api  | 2025-10-30 14:49:54:     at i (.next/server/app/api/admin/companies/[companyId]/route.js:1:1479)
+0|callup-api  | 2025-10-30 14:49:54:     at x (.next/server/app/api/auto-call/start/route.js:1:3463)
+0|callup-api  | 2025-10-30 14:49:54:     at async k (.next/server/app/api/auto-call/start/route.js:12:3085)
+0|callup-api  | 2025-10-30 14:49:54:     at async g (.next/server/app/api/auto-call/start/route.js:12:4088)
+0|callup-api  | 2025-10-30 14:49:54:     at async D (.next/server/app/api/auto-call/start/route.js:12:5210) {
+0|callup-api  | 2025-10-30 14:49:54:   code: 'ER_WRONG_ARGUMENTS',
+0|callup-api  | 2025-10-30 14:49:54:   errno: 1210,
+0|callup-api  | 2025-10-30 14:49:54:   sql: 'SELECT customer_id, db_id, customer_name, customer_phone,\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '              customer_info1, customer_info2, customer_info3, event_name\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       FROM customers\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       WHERE db_id = ?\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '         AND assigned_user_id = ?\n' +
+0|callup-api  | 2025-10-30 14:49:54:     "         AND data_status = '미사용'\n" +
+0|callup-api  | 2025-10-30 14:49:54:     '       ORDER BY customer_id\n' +
+0|callup-api  | 2025-10-30 14:49:54:     '       LIMIT ?',
+0|callup-api  | 2025-10-30 14:49:54:   sqlState: 'HY000',
+0|callup-api  | 2025-10-30 14:49:54:   sqlMessage: 'Incorrect arguments to mysqld_stmt_execute'
+0|callup-api  | 2025-10-30 14:49:54: }
