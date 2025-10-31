@@ -525,11 +525,28 @@ DB 고객 할당
 
 ### 4. LIMIT 파라미터 처리
 
-MySQL prepared statement 제약:
+⚠️ **중요**: MySQL prepared statement는 LIMIT/OFFSET 바인딩을 지원하지 않음
+
+**적용된 API**:
+- `/api/auto-call/start`
+- `/api/customers/search`
+- `/api/db-lists/{dbId}/customers`
+- `/api/company-admin/db-assign`
+
+**처리 방식**:
 ```typescript
-const limit = Math.max(1, Math.min(1000, parseInt(String(count))))
-// SQL: LIMIT ${limit}
+// Safe integer validation (SQL injection prevention)
+const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '50')))
+const offset = Math.max(0, (page - 1) * limit)
+
+// Direct insertion (NOT parameter binding)
+const query = `SELECT * FROM table LIMIT ${limit} OFFSET ${offset}`
 ```
+
+**보안 고려사항**:
+- `Math.max/Math.min`으로 범위 제한 (SQL injection 방지)
+- `parseInt`로 정수 변환 강제
+- 직접 삽입 방식이지만 검증된 안전한 정수만 사용
 
 ---
 

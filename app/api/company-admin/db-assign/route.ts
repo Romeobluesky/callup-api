@@ -46,13 +46,17 @@ export async function POST(request: NextRequest) {
 
       // Process each assignment
       for (const assignment of body.assignments) {
+        // Ensure count is a safe integer (SQL injection prevention)
+        const safeCount = Math.max(1, Math.min(10000, parseInt(String(assignment.count))))
+
         // 1. Get unused customers for this assignment
+        // LIMIT must be directly inserted (not bound as parameter)
         const [customers] = await conn.execute<any>(
           `SELECT customer_id
            FROM customers
            WHERE db_id = ? AND data_status = '미사용' AND assigned_user_id IS NULL
-           LIMIT ?`,
-          [body.dbId, assignment.count]
+           LIMIT ${safeCount}`,
+          [body.dbId]
         )
 
         if (!customers || customers.length === 0) {

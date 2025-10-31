@@ -52,8 +52,10 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') // '미사용' or '사용완료'
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = (page - 1) * limit
+
+    // Ensure limit and offset are safe integers (SQL injection prevention)
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '50')))
+    const offset = Math.max(0, (page - 1) * limit)
 
     // 1. Get DB info
     const dbInfoResult = await query<DbInfo[]>(
@@ -93,11 +95,10 @@ export async function GET(
       queryParams.push(status)
     }
 
+    // LIMIT and OFFSET must be directly inserted (not bound as parameters)
     customersQuery += `
       ORDER BY customer_id ASC
-      LIMIT ? OFFSET ?`
-
-    queryParams.push(limit, offset)
+      LIMIT ${limit} OFFSET ${offset}`
 
     const customers = await query<CustomerRecord[]>(customersQuery, queryParams)
 

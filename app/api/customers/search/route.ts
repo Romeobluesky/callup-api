@@ -37,8 +37,10 @@ export async function GET(request: NextRequest) {
     const eventName = searchParams.get('eventName')
     const callResult = searchParams.get('callResult')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const offset = (page - 1) * limit
+
+    // Ensure limit and offset are safe integers (SQL injection prevention)
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20')))
+    const offset = Math.max(0, (page - 1) * limit)
 
     // Build query with filters
     let searchQuery = `
@@ -81,11 +83,10 @@ export async function GET(request: NextRequest) {
       queryParams.push(`%${callResult}%`)
     }
 
+    // LIMIT and OFFSET must be directly inserted (not bound as parameters)
     searchQuery += `
       ORDER BY c.call_datetime DESC
-      LIMIT ? OFFSET ?`
-
-    queryParams.push(limit, offset)
+      LIMIT ${limit} OFFSET ${offset}`
 
     // Execute search query
     const customers = await query<CustomerSearchRecord[]>(searchQuery, queryParams)
