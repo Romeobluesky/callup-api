@@ -31,6 +31,7 @@ interface CustomerDetailRecord {
   reservation_time: string | null
   upload_date: string | null
   last_modified_date: string | null
+  has_audio: boolean
 }
 
 export async function GET(
@@ -52,7 +53,7 @@ export async function GET(
       return errorResponse('유효하지 않은 고객 ID입니다.', 'INVALID_CUSTOMER_ID', 400)
     }
 
-    // Get customer detail with company_id check
+    // Get customer detail with has_audio from call_logs
     const customers = await query<CustomerDetailRecord[]>(
       `SELECT
         c.customer_id,
@@ -75,9 +76,11 @@ export async function GET(
         c.reservation_date,
         c.reservation_time,
         c.upload_date,
-        c.last_modified_date
+        c.last_modified_date,
+        CASE WHEN cl.has_audio IS NOT NULL THEN cl.has_audio ELSE FALSE END as has_audio
       FROM customers c
       JOIN db_lists d ON c.db_id = d.db_id
+      LEFT JOIN call_logs cl ON c.customer_id = cl.customer_id
       WHERE c.customer_id = ? AND d.company_login_id = ?`,
       [customerId, user.companyLoginId]
     )
@@ -110,6 +113,7 @@ export async function GET(
       reservationTime: customer.reservation_time || '',
       uploadDate: customer.upload_date || '',
       lastModifiedDate: customer.last_modified_date || '',
+      hasAudio: customer.has_audio,
     })
   } catch (error: any) {
     console.error('Customer detail error:', error)
