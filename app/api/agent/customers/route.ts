@@ -7,7 +7,9 @@ interface CustomerRecord {
   customer_id: number
   customer_name: string
   customer_phone: string
-  customer_address: string | null
+  customer_info1: string | null
+  customer_info2: string | null
+  customer_info3: string | null
   data_status: string
   db_id: number
   db_title: string
@@ -60,7 +62,9 @@ export async function GET(request: NextRequest) {
         c.customer_id,
         c.customer_name,
         c.customer_phone,
-        c.customer_address,
+        c.customer_info1,
+        c.customer_info2,
+        c.customer_info3,
         c.data_status,
         c.db_id,
         dl.db_title,
@@ -78,7 +82,9 @@ export async function GET(request: NextRequest) {
       customerId: customer.customer_id,
       name: customer.customer_name,
       phone: customer.customer_phone,
-      address: customer.customer_address || '',
+      info1: customer.customer_info1 || '',
+      info2: customer.customer_info2 || '',
+      info3: customer.customer_info3 || '',
       status: customer.data_status,
       dbId: customer.db_id,
       dbTitle: customer.db_title || '',
