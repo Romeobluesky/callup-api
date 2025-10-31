@@ -15,6 +15,12 @@ interface CustomerRecord {
   db_title: string
   db_date: string
   assigned_at: string | null
+  call_result: string | null
+  consultation_result: string | null
+  call_datetime: string | null
+  call_duration: string | null
+  memo: string | null
+  has_audio: boolean
 }
 
 export async function GET(request: NextRequest) {
@@ -69,9 +75,16 @@ export async function GET(request: NextRequest) {
         c.db_id,
         dl.db_title,
         dl.db_date,
-        c.updated_at AS assigned_at
+        c.updated_at AS assigned_at,
+        c.call_result,
+        c.consultation_result,
+        c.call_datetime,
+        c.call_duration,
+        c.memo,
+        CASE WHEN cl.has_audio IS NOT NULL THEN cl.has_audio ELSE FALSE END as has_audio
       FROM customers c
       LEFT JOIN db_lists dl ON c.db_id = dl.db_id
+      LEFT JOIN call_logs cl ON c.customer_id = cl.customer_id
       WHERE ${whereClause}
       ORDER BY c.updated_at DESC`,
       queryParams
@@ -90,6 +103,12 @@ export async function GET(request: NextRequest) {
       dbTitle: customer.db_title || '',
       dbDate: customer.db_date || '',
       assignedAt: customer.assigned_at || '',
+      callResult: customer.call_result || null,
+      consultationResult: customer.consultation_result || null,
+      callDateTime: customer.call_datetime || null,
+      callDuration: customer.call_duration || null,
+      memo: customer.memo || null,
+      hasAudio: customer.has_audio,
     }))
 
     return successResponse({
