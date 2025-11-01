@@ -1,6 +1,6 @@
 # CallUp API 엔드포인트 문서
 
-**최종 업데이트**: 2025-10-31  
+**최종 업데이트**: 2025-11-01  
 **프로젝트**: CallUp 자동 통화 시스템  
 **백엔드**: Next.js 15 App Router + MySQL
 
@@ -16,8 +16,10 @@
 6. [DB 리스트 API](#db-리스트-api)
 7. [통화 로그 API](#통화-로그-api)
 8. [사용자 상태 API](#사용자-상태-api)
-9. [업체 관리자 API](#업체-관리자-api)
-10. [주요 변경사항](#주요-변경사항)
+9. [상담원 API](#상담원-api) ⭐ **NEW**
+10. [녹취파일 관리 API](#녹취파일-관리-api) ⭐ **NEW**
+11. [업체 관리자 API](#업체-관리자-api)
+12. [주요 변경사항](#주요-변경사항)
 
 ---
 
@@ -453,6 +455,304 @@ DB 활성화/비활성화
 
 ---
 
+## 상담원 API
+
+### GET /api/agent/customers
+
+⭐ **NEW** - 상담원에게 분배된 고객 목록 조회
+
+**Headers**: Authorization 필요
+
+**Query Parameters**:
+- `dbId` (선택): 특정 DB 리스트 필터링
+- `status` (선택): 데이터 상태 필터링 (미사용/사용완료)
+- `search` (선택): 고객명 또는 전화번호 검색
+
+**Response (200)**:
+```json
+{
+  "status": "success",
+  "data": {
+    "total": 10,
+    "customers": [
+      {
+        "customerId": 1,
+        "name": "홍길동",
+        "phone": "010-1234-5678",
+        "info1": "30대",
+        "info2": "서울",
+        "info3": "관심상품A",
+        "status": "미사용",
+        "dbId": 5,
+        "dbTitle": "2024년 1월 고객 DB",
+        "dbDate": "2024-01-15",
+        "assignedAt": "2024-01-20 10:30:00",
+        "callResult": "연결",
+        "consultationResult": "상담완료",
+        "callDateTime": "2024-01-25 14:30:00",
+        "callDuration": "180",
+        "memo": "재상담 필요",
+        "hasAudio": true
+      }
+    ]
+  }
+}
+```
+
+**특징**:
+- 로그인한 상담원에게 **관리자가 분배한 고객만** 조회
+- 통화 이력 정보 포함 (callResult, consultationResult, memo 등)
+- `hasAudio`: 통화 녹음 파일 존재 여부
+- 필터링 및 검색 기능 지원
+
+**사용 예시**:
+```
+GET /api/agent/customers                    // 전체 조회
+GET /api/agent/customers?dbId=5             // DB별 조회
+GET /api/agent/customers?status=미사용       // 상태별 조회
+GET /api/agent/customers?search=홍길동       // 검색
+```
+
+---
+
+## 녹취파일 관리 API
+
+### POST /api/recordings/upload
+
+⭐ **NEW** - 녹취파일 자동 업로드 (앱 → API)
+
+**Headers**: Authorization 필요
+
+**Content-Type**: multipart/form-data
+
+**Form Data**:
+- `file`: 녹취파일 (File, 필수)
+- `phoneNumber`: 전화번호 (string, 필수) - 발신 또는 수신 번호
+- `recordedAt`: 녹음 시각 (string, 필수) - ISO 8601 형식 (예: "2025-01-15T14:30:52Z")
+- `duration`: 녹음 시간(초) (number, 선택)
+
+**동작 방식**:
+1. `phoneNumber`와 `recordedAt` 기준으로 call_logs 테이블에서 통화 기록 검색 (±5분 오차 허용)
+2. 통화 기록이 없으면 customers 테이블에서 전화번호로 고객 검색
+3. call_logs 테이블 업데이트 (통화 기록이 있는 경우)
+4. customers 테이블 업데이트 (has_audio, audio_file_path)
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "message": "녹취파일 업로드 완료",
+  "data": {
+    "phoneNumber": "01012345678",
+    "recordedAt": "2025-01-15T14:30:52Z",
+    "fileName": "01012345678_20250115143052_101.m4a",
+    "fileSize": 2048576,
+    "duration": 180,
+    "uploadedAt": "2025-01-15T14:31:00Z"
+  }
+}
+```
+
+**Response (413 - File Too Large)**:
+```json
+{
+  "success": false,
+  "message": "파일 크기는 50MB를 초과할 수 없습니다.",
+  "code": "FILE_TOO_LARGE"
+}
+```
+
+**파일 저장 구조**:
+```
+/storage/recordings/
+  └── company_{companyId}/           # 업체별
+      └── {YYYY-MM}/                 # 년-월별
+          └── {YYYYMMDD}/            # 일자별
+              └── {phone}_{timestamp}_{logId}.{ext}  (통화 기록 있는 경우)
+              └── {phone}_{timestamp}.{ext}          (통화 기록 없는 경우)
+```
+
+**파일 검증**:
+- 허용 형식: m4a, mp3, amr, 3gp, wav, aac
+- 최대 크기: 50MB (초과 시 413 에러)
+- 중복 업로드 방지 (call_log 기준)
+
+---
+
+### GET /api/recordings/check-exists/{logId}
+
+⭐ **NEW** - 녹취파일 존재 여부 확인
+
+**Headers**: Authorization 필요
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "exists": true,
+    "logId": 101,
+    "uploadedAt": "2025-01-15T14:30:52Z"
+  }
+}
+```
+
+---
+
+### GET /api/recordings/{logId}/stream
+
+⭐ **NEW** - 녹취파일 스트리밍 재생
+
+**Headers**: Authorization 필요
+
+**Response**: Audio Stream
+```
+Content-Type: audio/mp4
+Content-Disposition: inline
+Accept-Ranges: bytes
+Cache-Control: public, max-age=86400
+```
+
+**특징**:
+- 브라우저에서 직접 재생 가능
+- Range Request 지원 (부분 재생)
+- 캐싱 지원 (24시간)
+
+---
+
+### GET /api/recordings/{logId}/download
+
+⭐ **NEW** - 녹취파일 다운로드
+
+**Headers**: Authorization 필요
+
+**Response**: File Download
+```
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="..."
+```
+
+---
+
+### GET /api/admin/recordings
+
+⭐ **NEW** - 녹취 목록 조회 (관리자)
+
+**Headers**: Authorization 필요
+
+**Role**: company_admin, super_admin
+
+**Query Parameters**:
+- `dateFrom`: 시작일 (YYYY-MM-DD, 선택)
+- `dateTo`: 종료일 (YYYY-MM-DD, 선택)
+- `userId`: 상담원 ID (선택)
+- `customerId`: 고객 ID (선택)
+- `hasAudio`: 녹취 존재 여부 (true/false, 선택)
+- `page`: 페이지 번호 (default: 1)
+- `limit`: 페이지당 항목 수 (default: 20, max: 100)
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "recordings": [
+      {
+        "logId": 101,
+        "companyId": 1,
+        "userId": 2,
+        "userName": "김상담",
+        "customerId": 50,
+        "customerName": "홍길동",
+        "customerPhone": "010-8765-4321",
+        "callResult": "연결",
+        "callDateTime": "2025-01-15T14:30:00Z",
+        "audioDuration": 180,
+        "audioFileSize": 2048576,
+        "audioFormat": "m4a",
+        "originalFilename": "recording.m4a",
+        "uploadedAt": "2025-01-15T14:30:52Z"
+      }
+    ],
+    "pagination": {
+      "total": 150,
+      "page": 1,
+      "limit": 20,
+      "totalPages": 8
+    }
+  }
+}
+```
+
+---
+
+### DELETE /api/admin/recordings/{logId}
+
+⭐ **NEW** - 녹취파일 삭제 (관리자)
+
+**Headers**: Authorization 필요
+
+**Role**: company_admin, super_admin
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "message": "녹취파일이 삭제되었습니다.",
+  "data": {
+    "logId": 101,
+    "deleted": true
+  }
+}
+```
+
+**처리 내용**:
+1. 파일 시스템에서 파일 삭제
+2. call_logs 테이블 업데이트 (has_audio = FALSE)
+
+---
+
+### GET /api/admin/recordings/stats
+
+⭐ **NEW** - 녹취 통계 조회 (관리자)
+
+**Headers**: Authorization 필요
+
+**Role**: company_admin, super_admin
+
+**Query Parameters**:
+- `dateFrom`: 시작일 (YYYY-MM-DD, 선택)
+- `dateTo`: 종료일 (YYYY-MM-DD, 선택)
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "totalRecordings": 1500,
+    "totalSize": 3221225472,
+    "totalDuration": 45000,
+    "byStatus": {
+      "completed": 1450,
+      "failed": 30,
+      "pending": 15,
+      "uploading": 5
+    },
+    "byFormat": {
+      "m4a": 1200,
+      "mp3": 250,
+      "amr": 50
+    }
+  }
+}
+```
+
+**응답 필드 설명**:
+- `totalSize`: 바이트 단위 (3GB = 3,221,225,472 bytes)
+- `totalDuration`: 초 단위 (45,000초 = 12.5시간)
+
+---
+
 ## 업체 관리자 API
 
 ### GET /api/company-admin/agents
@@ -502,6 +802,67 @@ DB 고객 할당
 
 ## 주요 변경사항
 
+### ⭐ NEW (2025-11-01): 녹취파일 관리 시스템 추가
+
+**목적**: 오토콜 앱의 통화 녹취파일 자동 업로드 및 관리자 페이지에서의 녹취 관리
+
+**데이터베이스 변경사항**:
+- `call_logs` 테이블에 8개 컬럼 추가
+  - `has_audio`: 녹음 파일 존재 여부
+  - `audio_file_path`: 파일 저장 경로
+  - `audio_file_size`: 파일 크기 (바이트)
+  - `audio_duration`: 녹음 시간 (초)
+  - `audio_format`: 파일 형식 (m4a, mp3, amr)
+  - `original_filename`: 원본 파일명
+  - `uploaded_at`: 업로드 시간
+  - `upload_status`: 업로드 상태 (pending, uploading, completed, failed)
+- 성능 최적화를 위한 4개 인덱스 추가
+
+**파일 저장 구조**:
+```
+/storage/recordings/
+  └── company_{companyId}/     # 업체별
+      └── {YYYY-MM}/            # 년-월별
+          └── {YYYYMMDD}/       # 일자별
+              └── {caller}_{receiver}_{timestamp}_{logId}.{ext}
+```
+
+**신규 API 엔드포인트** (총 6개):
+1. `POST /api/recordings/upload` - 녹취파일 업로드 (앱용)
+2. `GET /api/recordings/check-exists/{logId}` - 중복 업로드 방지
+3. `GET /api/recordings/{logId}/stream` - 스트리밍 재생
+4. `GET /api/recordings/{logId}/download` - 파일 다운로드
+5. `GET /api/admin/recordings` - 녹취 목록 조회 (관리자)
+6. `DELETE /api/admin/recordings/{logId}` - 녹취파일 삭제 (관리자)
+7. `GET /api/admin/recordings/stats` - 녹취 통계 조회 (관리자)
+
+**보안 및 검증**:
+- 파일 형식 검증: m4a, mp3, amr만 허용
+- 파일 크기 제한: 최대 100MB
+- JWT 토큰 인증 (모든 API)
+- 업체별 데이터 격리 (company_id 검증)
+- 관리자 권한 검증 (company_admin, super_admin)
+
+---
+
+### ⭐ NEW (2025-11-01): 상담원 전용 고객 조회 API 추가
+
+**엔드포인트**: `GET /api/agent/customers`
+
+**목적**: 앱 개발팀 요청 - 상담원이 자신에게 분배된 고객 목록을 조회할 수 있는 전용 API
+
+**주요 기능**:
+- 로그인한 상담원에게 관리자가 분배한 고객만 조회 (`assigned_user_id` 필터링)
+- 통화 이력 정보 포함 (callResult, consultationResult, callDateTime, memo, hasAudio)
+- DB별 필터링, 상태별 필터링, 검색 기능 지원
+
+**데이터 출처**:
+- 고객 기본정보 및 통화정보: `customers` 테이블
+- DB 정보: `db_lists` 테이블 (LEFT JOIN)
+- 녹음 파일 여부: `call_logs` 테이블 (LEFT JOIN)
+
+---
+
 ### 1. company_id → company_login_id 마이그레이션
 
 모든 API에서 company_login_id 사용:
@@ -515,6 +876,7 @@ DB 고객 할당
 - /api/dashboard
 - /api/db-lists
 - /api/auto-call/start
+- **/api/agent/customers** ⭐ NEW
 
 ### 3. totalCount 수정
 

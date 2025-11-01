@@ -1,20 +1,307 @@
-0|callup-a | 2025-10-31 15:58:16:     '        c.customer_id,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.db_id,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        d.db_date,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.event_name,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.customer_name,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.customer_phone,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.call_result,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.call_datetime,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.call_duration,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        c.memo,\n' +
-0|callup-a | 2025-10-31 15:58:16:     '        CASE WHEN cl.has_audio IS NOT NULL THEN cl.has_audio ELSE FALSE END as has_audio\n' +
-0|callup-a | 2025-10-31 15:58:16:     '      FROM customers c\n' +
-0|callup-a | 2025-10-31 15:58:16:     '      JOIN db_lists d ON c.db_id = d.db_id\n' +
-0|callup-a | 2025-10-31 15:58:16:     '      LEFT JOIN call_logs cl ON c.customer_id = cl.customer_id\n' +
-0|callup-a | 2025-10-31 15:58:16:     '      WHERE d.company_login_id = ?\n' +
-0|callup-a | 2025-10-31 15:58:16:     '      ORDER BY c.call_datetime DESC\n' +
-0|callup-a | 2025-10-31 15:58:16:     '      LIMIT ? OFFSET ?',
-0|callup-a | 2025-10-31 15:58:16:   sqlState: 'HY000',
-0|callup-a | 2025-10-31 15:58:16:   sqlMessage: 'Incorrect arguments to mysqld_stmt_execute'
-0|callup-a | 2025-10-31 15:58:16: }
+:렌치: API 개발팀 추가 업무 (기존 구조 기반)
+1. 기존 테이블 확장 (필요시)
+1-1. call_log 테이블 추가 컬럼 검토
+sql
+-- 현재 구조
+call_log {
+    has_audio BOOLEAN,
+    audio_file_path VARCHAR(500)
+}
+
+-- 추가 권장 컬럼들
+ALTER TABLE call_log ADD COLUMN audio_file_size BIGINT;           -- 파일 크기
+ALTER TABLE call_log ADD COLUMN audio_duration INTEGER;          -- 녹음 시간(초)
+ALTER TABLE call_log ADD COLUMN audio_format VARCHAR(10);        -- mp3, m4a, amr
+ALTER TABLE call_log ADD COLUMN uploaded_at TIMESTAMP;           -- 업로드 시간
+ALTER TABLE call_log ADD COLUMN upload_status VARCHAR(20) DEFAULT 'pending'; -- pending, uploading, completed, failed
+ALTER TABLE call_log ADD COLUMN original_filename VARCHAR(255);  -- 원본 파일명
+1-2. 업로드 상태 관리 테이블 (선택사항)
+sql
+CREATE TABLE audio_upload_status (
+    id VARCHAR(36) PRIMARY KEY,
+    call_log_id INTEGER NOT NULL,
+    upload_status ENUM('pending', 'uploading', 'completed', 'failed') DEFAULT 'pending',
+    upload_progress INTEGER DEFAULT 0,
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (call_log_id) REFERENCES call_log(id)
+);
+2. 녹취파일 업로드 API 확장
+2-1. 업로드 API 개선
+python
+@app.post("/api/recordings/upload")
+async def upload_recording(
+    recording: UploadFile = File(...),
+    call_log_id: int = Form(...),
+    phone_number: str = Form(...),
+    consultant_id: int = Form(...),
+    duration: int = Form(None),
+    original_filename: str = Form(...)
+):
+    try:
+        # 1. call_log 존재 확인
+        call_log = await get_call_log(call_log_id)
+        if not call_log:
+            raise HTTPException(404, "통화 기록을 찾을 수 없습니다")
+
+        # 2. 파일 저장
+        file_extension = recording.filename.split('.')[-1].lower()
+        server_filename = f"call_{call_log_id}_{uuid.uuid4()}.{file_extension}"
+        file_path = f"/storage/recordings/{server_filename}"
+
+        # 파일 저장
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await recording.read()
+            await f.write(content)
+
+        # 3. call_log 테이블 업데이트
+        await update_call_log_audio(
+            call_log_id=call_log_id,
+            has_audio=True,
+            audio_file_path=file_path,
+            audio_file_size=len(content),
+            audio_duration=duration,
+            audio_format=file_extension,
+            original_filename=original_filename,
+            uploaded_at=datetime.now(),
+            upload_status='completed'
+        )
+
+        return {
+            "success": True,
+            "call_log_id": call_log_id,
+            "file_path": file_path,
+            "message": "녹음 파일 업로드 완료"
+        }
+
+    except Exception as e:
+        # 실패 시 상태 업데이트
+        await update_call_log_upload_status(call_log_id, 'failed', str(e))
+        return {"success": False, "error": str(e)}
+2-2. 중복 업로드 방지 API
+python
+@app.get("/api/recordings/check-exists")
+async def check_recording_exists(
+    call_log_id: int = None,
+    phone_number: str = None,
+    timestamp: str = None
+):
+    """녹취파일 중복 업로드 방지를 위한 체크"""
+
+    if call_log_id:
+        call_log = await get_call_log(call_log_id)
+        return {"exists": call_log and call_log.has_audio}
+
+    if phone_number and timestamp:
+        # 전화번호와 시간으로 기존 녹취 확인
+        existing = await find_recording_by_phone_and_time(phone_number, timestamp)
+        return {"exists": bool(existing), "call_log_id": existing.id if existing else None}
+
+    return {"exists": False}
+3. 녹취파일 조회 및 스트리밍 API
+3-1. 고객별 녹취 존재 여부 확인
+python
+@app.get("/api/customers/{customer_id}/has-recording")
+async def has_recording_for_customer(customer_id: int):
+    """특정 고객의 녹취파일 존재 여부 확인"""
+
+    latest_call = await get_latest_call_by_customer(customer_id)
+
+    return {
+        "has_recording": latest_call and latest_call.has_audio,
+        "call_log_id": latest_call.id if latest_call else None,
+        "recorded_at": latest_call.created_at if latest_call else None
+    }
+
+@app.get("/api/phone/{phone_number}/has-recording")
+async def has_recording_for_phone(phone_number: str):
+    """전화번호별 녹취파일 존재 여부 확인"""
+
+    latest_call = await get_latest_call_by_phone(phone_number)
+
+    return {
+        "has_recording": latest_call and latest_call.has_audio,
+        "call_log_id": latest_call.id if latest_call else None,
+        "recorded_at": latest_call.created_at if latest_call else None,
+        "duration": latest_call.audio_duration if latest_call else None
+    }
+3-2. 녹취파일 스트리밍/다운로드
+python
+@app.get("/api/recordings/{call_log_id}/stream")
+async def stream_recording(call_log_id: int):
+    """녹취파일 스트리밍 (앱에서 바로 재생용)"""
+
+    call_log = await get_call_log(call_log_id)
+    if not call_log or not call_log.has_audio:
+        raise HTTPException(404, "녹음 파일을 찾을 수 없습니다")
+
+    file_path = call_log.audio_file_path
+    if not os.path.exists(file_path):
+        raise HTTPException(404, "파일이 존재하지 않습니다")
+
+    return FileResponse(
+        file_path,
+        media_type=f"audio/{call_log.audio_format}",
+        headers={
+            "Content-Disposition": "inline",
+            "Accept-Ranges": "bytes"  # 스트리밍 지원
+        }
+    )
+
+@app.get("/api/recordings/{call_log_id}/download")
+async def download_recording(call_log_id: int):
+    """녹취파일 다운로드"""
+
+    call_log = await get_call_log(call_log_id)
+    if not call_log or not call_log.has_audio:
+        raise HTTPException(404, "녹음 파일을 찾을 수 없습니다")
+
+    filename = call_log.original_filename or f"recording_{call_log_id}.{call_log.audio_format}"
+
+    return FileResponse(
+        call_log.audio_file_path,
+        media_type="application/octet-stream",
+        filename=filename,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+4. 배치 조회 API (관리자페이지용)
+4-1. 녹취 목록 조회
+python
+@app.get("/api/admin/recordings")
+async def get_recordings_list(
+    date_from: str = None,
+    date_to: str = None,
+    consultant_id: int = None,
+    has_audio: bool = None,
+    page: int = 1,
+    limit: int = 50
+):
+    """관리자용 녹취 목록 조회"""
+
+    filters = {}
+
+    if date_from:
+        filters['created_at_gte'] = datetime.fromisoformat(date_from)
+    if date_to:
+        filters['created_at_lte'] = datetime.fromisoformat(date_to)
+    if consultant_id:
+        filters['assigned_user_id'] = consultant_id
+    if has_audio is not None:
+        filters['has_audio'] = has_audio
+
+    recordings = await get_call_logs_with_audio(filters, page, limit)
+    total = await count_call_logs_with_audio(filters)
+
+    return {
+        "recordings": [
+            {
+                "call_log_id": r.id,
+                "phone_number": r.phone_number,
+                "consultant_name": r.consultant.name,
+                "duration": r.audio_duration,
+                "file_size": r.audio_file_size,
+                "recorded_at": r.created_at.isoformat(),
+                "audio_format": r.audio_format,
+                "original_filename": r.original_filename
+            }
+            for r in recordings
+        ],
+        "total": total,
+        "page": page,
+        "limit": limit
+    }
+5. 업로드 상태 관리 API
+5-1. 업로드 진행 상황 추적
+python
+@app.get("/api/recordings/upload-status")
+async def get_upload_status():
+    """전체 업로드 상태 조회"""
+
+    status = await get_upload_statistics()
+
+    return {
+        "pending": status.pending_count,
+        "uploading": status.uploading_count,
+        "completed": status.completed_count,
+        "failed": status.failed_count,
+        "last_upload": status.last_upload_time,
+        "storage_used": status.total_file_size
+    }
+
+@app.post("/api/recordings/{call_log_id}/retry-upload")
+async def retry_upload(call_log_id: int):
+    """업로드 실패한 항목 재시도"""
+
+    call_log = await get_call_log(call_log_id)
+    if call_log.upload_status != 'failed':
+        raise HTTPException(400, "재시도 가능한 상태가 아닙니다")
+
+    # 재시도 상태로 변경
+    await update_call_log_upload_status(call_log_id, 'pending')
+
+    return {"success": True, "message": "재시도 대기열에 추가되었습니다"}
+6. 데이터베이스 쿼리 함수들
+python
+async def update_call_log_audio(
+    call_log_id: int,
+    has_audio: bool,
+    audio_file_path: str,
+    audio_file_size: int,
+    audio_duration: int,
+    audio_format: str,
+    original_filename: str,
+    uploaded_at: datetime,
+    upload_status: str
+):
+    """call_log 테이블의 오디오 관련 필드 업데이트"""
+
+    query = """
+    UPDATE call_log
+    SET has_audio = ?,
+        audio_file_path = ?,
+        audio_file_size = ?,
+        audio_duration = ?,
+        audio_format = ?,
+        original_filename = ?,
+        uploaded_at = ?,
+        upload_status = ?
+    WHERE id = ?
+    """
+
+    await database.execute(
+        query,
+        has_audio, audio_file_path, audio_file_size,
+        audio_duration, audio_format, original_filename,
+        uploaded_at, upload_status, call_log_id
+    )
+
+async def get_latest_call_by_phone(phone_number: str):
+    """전화번호로 최신 통화 기록 조회"""
+
+    query = """
+    SELECT cl.*, u.name as consultant_name
+    FROM call_log cl
+    LEFT JOIN users u ON cl.assigned_user_id = u.id
+    WHERE cl.phone_number = ?
+    ORDER BY cl.created_at DESC
+    LIMIT 1
+    """
+
+    return await database.fetch_one(query, phone_number)
+:클립보드: API 개발팀 주요 작업 리스트
+우선순위 1 (필수)
+:흰색_확인_표시: 녹취파일 업로드 API 완성
+:흰색_확인_표시: 중복 업로드 방지 로직
+:흰색_확인_표시: 전화번호별 녹취 존재 여부 확인 API
+:흰색_확인_표시: 녹취파일 스트리밍 API
+우선순위 2 (관리자 기능)
+:흰색_확인_표시: 관리자용 녹취 목록 조회 API
+:흰색_확인_표시: 녹취파일 다운로드 API
+:흰색_확인_표시: 업로드 상태 모니터링 API
+우선순위 3 (최적화)
+:흰색_확인_표시: 파일 스토리지 관리
+:흰색_확인_표시: 업로드 실패 재시도 메커니즘
+:흰색_확인_표시: 성능 최적화 (인덱스, 캐싱)
+이렇게 기존 테이블 구조를 활용하면서 필요한 API들을 추가하면 완전한 녹취파일 관리 시스템이 완성됩니다!
